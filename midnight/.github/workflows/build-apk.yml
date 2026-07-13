@@ -1,0 +1,52 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kodları indir
+        uses: actions/checkout@v4
+
+      - name: Node.js kur
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Java (JDK 17) kur
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Android SDK kur
+        uses: android-actions/setup-android@v3
+
+      - name: Bağımlılıkları yükle
+        run: npm install
+
+      - name: Expo prebuild (native Android projesi oluştur)
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: Gradle ile APK derle
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: APK dosyasını bul ve isimlendir
+        run: |
+          mkdir -p build-output
+          find android -name "*.apk" -exec cp {} build-output/ \;
+          ls -la build-output
+
+      - name: APK'yı yükle (Artifacts)
+        uses: actions/upload-artifact@v4
+        with:
+          name: midnight-apk
+          path: build-output/*.apk
+          retention-days: 30
